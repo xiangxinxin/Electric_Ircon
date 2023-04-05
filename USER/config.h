@@ -33,6 +33,7 @@
 #include "key.h"
 #include "main.h"
 #include "ctrl.h"
+#include "pid.h"
 
 #define LED P53
 #define KEY1 P50

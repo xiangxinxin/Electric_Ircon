@@ -73,8 +73,9 @@ void _8bit_set_data_para(uint8_t *p_val, uint8_t max, uint8_t min, uint8_t statu
 **************************************************************/
 void key_process(void)
 {
-	if (key1.event.click_up)
+	if (key1.event.click_up || key1.event.key_long_pressed)
 	{
+		key1.event.key_long_pressed = 0;
 		if (ctrl.heat_onoff)
 		{
 			ctrl.heat_onoff = 0;
@@ -84,11 +85,6 @@ void key_process(void)
 		{
 			ctrl.heat_onoff = 1;
 		}
-	}
-
-	if (key1.event.key_long_pressed)
-	{
-		key1.event.key_long_pressed = 0;
 	}
 }
 

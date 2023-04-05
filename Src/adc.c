@@ -41,7 +41,7 @@ void MX_ADC_Init(void)
   hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc.Init.LowPowerAutoWait = DISABLE;
   hadc.Init.LowPowerAutoPowerOff = DISABLE;
-  hadc.Init.ContinuousConvMode = DISABLE;
+  hadc.Init.ContinuousConvMode = ENABLE;
   hadc.Init.DiscontinuousConvMode = DISABLE;
   hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -55,7 +55,14 @@ void MX_ADC_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_3;
   sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
-  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
+  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel to be converted. 
+  */
+  sConfig.Channel = ADC_CHANNEL_4;
   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -77,12 +84,13 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
   
     __HAL_RCC_GPIOA_CLK_ENABLE();
     /**ADC GPIO Configuration    
-    PA3     ------> ADC_IN3 
+    PA3     ------> ADC_IN3
+    PA4     ------> ADC_IN4 
     */
-    GPIO_InitStruct.Pin = T12_ADC_Pin;
+    GPIO_InitStruct.Pin = T12_ADC_Pin|VIN_ADC_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(T12_ADC_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN ADC1_MspInit 1 */
 
@@ -102,9 +110,10 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
     __HAL_RCC_ADC1_CLK_DISABLE();
   
     /**ADC GPIO Configuration    
-    PA3     ------> ADC_IN3 
+    PA3     ------> ADC_IN3
+    PA4     ------> ADC_IN4 
     */
-    HAL_GPIO_DeInit(T12_ADC_GPIO_Port, T12_ADC_Pin);
+    HAL_GPIO_DeInit(GPIOA, T12_ADC_Pin|VIN_ADC_Pin);
 
   /* USER CODE BEGIN ADC1_MspDeInit 1 */
 

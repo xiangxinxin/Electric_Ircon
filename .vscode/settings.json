@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "multi_key.h": "c"
+        "multi_key.h": "c",
+        "config.h": "c",
+        "pid.h": "c"
     }
 }

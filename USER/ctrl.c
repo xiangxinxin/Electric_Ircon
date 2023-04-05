@@ -2,6 +2,7 @@
 #include "ctrl.h"
 
 #define TRMP_LIST_MAX 10
+
 _PWM_T pwm1 = {0};
 _CTRL_T ctrl = {0};
 uint16_t temperature_list[TRMP_LIST_MAX] = {0}; // t12 热电偶分度表
@@ -29,7 +30,8 @@ void Init(void) //初始化
 /******************** 主函数 **************************/
 void ctrl_main(void)
 {
-    Init(); //初始化
+    Init();     //初始化	
+    PID_init(); // PID参数初始化
 
     // PrintString1("上电初始化完成\r\n");
     while (1)
@@ -49,22 +51,24 @@ void ctrl_main(void)
 void system_loop(void)
 {
     static uint8_t loop_cnt = 0x00;
-    TDM_PWM_ADC_Process(loop_cnt); //时分复用 PWM和ADC
     if (loop_cnt % 5 == 0)
     {
-        Sys_Scan();
-        key_scan();
-        key_process();
     }
     if (loop_cnt == 11)
     {
-        heat_Process(); //加热进程
     }
     else if (loop_cnt == 33)
     {
         ADC_Process();
     }
     else if (loop_cnt == 44)
+    {
+    }
+    else if (loop_cnt == 55)
+    {
+        heat_Process(); //加热进程
+    }
+    else if (loop_cnt == 66)
     {
         display_Process();
     }
@@ -165,93 +169,88 @@ void SetPWM(uint16_t pwm_val)
 
 void ADC_Process(void)
 {
-    // int adc_temp;
-    //    int *BGV; //内部1.19V参考信号源值存放在
+    uint16_t temp;
+    HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_1);
+    HAL_Delay(6);
 
-    // BGV = (int *)0xef;
-
-    // ctrl.BGA_val = *BGV; //MCU内部电压测量值
-
-    // adc_temp = 0;
-    // adc_temp = ADCRead(15);
-    // ctrl.vcc_voltage = (uint16_t)(ctrl.BGA_val * 1024L / adc_temp);
     HAL_ADC_Start(&hadc);
     HAL_ADC_PollForConversion(&hadc, 100);
     ctrl.t12_voltage = HAL_ADC_GetValue(&hadc);
-}
+    HAL_ADC_Start(&hadc);
+    HAL_ADC_PollForConversion(&hadc, 100);
+    ctrl.vbus_voltage = HAL_ADC_GetValue(&hadc);
+    // ctrl.t12_voltage = (temp + ctrl.t12_voltage) / 2;
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 
-// time division multiplexing
-void TDM_PWM_ADC_Process(uint8_t loop_cnt) //时分复用 PWM和ADC
-{
-    //    static uint8_t cnt = 0;
-    static uint8_t i = 0;
-    if (loop_cnt == 99)
-        if (i)
-            i = 0;
-        else
-            i = 1;
-    if (i)
-    {
-        if (loop_cnt == 22)
-        {
-            // SetPWM(0);
-            pwm1.enable = 0;
-        }
-        else if (loop_cnt == 32)
-        {
-            //   cnt = 0;
-            // ctrl.t12_voltage = ADCRead(7);
-            // SetPWM(ctrl.pwm_val);
-            pwm1.enable = 1;
-        }
-    }
+    // HAL_ADC_Start(&hadc);
+    // HAL_ADC_PollForConversion(&hadc, 100);
+    ctrl.vbus_voltage = HAL_ADC_GetValue(&hadc);
+    HAL_ADC_Stop(&hadc);
 }
 
 void heat_Process(void) //加热进程
 {
-    static uint16_t temp = 0xFFFF;
-    if (temp != ctrl.encoder_cnt)
-    {
-        temp = ctrl.encoder_cnt;
-        /* Set the Capture Compare Register value */
-        TIM1->CCR4 = temp; //设置占空比
-    }
+    int16_t temp = 0xFFFF;
 
-    if ((ctrl.encoder_cnt >= 0) && ctrl.heat_onoff)
-    {
-        ctrl.pwm_val = ctrl.encoder_cnt;
-    }
-    else
-    {
-        ctrl.pwm_val = 0;
-    }
+    ctrl.t12_set_temperature = ctrl.encoder_cnt * 20; // T12电烙铁设定温度
+                                                      //设置占空比
+    temp = PID_Operation((float)ctrl.t12_set_temperature, ctrl.t12_voltage);
+    if (temp < 0)
+        temp = 0;
+    else if (temp > 101)
+        temp = 101;
+    ctrl.pwm_val = (uint16_t)temp;
+
+    TIM3->CCR1 = ctrl.pwm_val; //设置占空比
 }
 
 void display_Process(void)
 {
-    char Dis_temp[60] = "{0}";
+
+    char Dis_temp[30] = "{0}";
     // uint8_t i = 0;
 
+    ctrl.vbus_voltage = 315.0 * (double)ctrl.vbus_voltage / 4095.0;
+    ctrl.vbus_voltage *= 11;
+    sprintf(Dis_temp, "VBUS V:%4d", (int)ctrl.vbus_voltage);
+    OLED_ShowString(1, 0, (uint8_t *)Dis_temp, 12);
     sprintf(Dis_temp, "T12 V:%4d", (int)ctrl.t12_voltage);
-    OLED_ShowString(1, 1, (uint8_t *)Dis_temp, 12);
-    sprintf(Dis_temp, "Coder:%4d", (int)ctrl.encoder_cnt);
-    OLED_ShowString(1, 20, (uint8_t *)Dis_temp, 12);
+    OLED_ShowString(1, 11, (uint8_t *)Dis_temp, 12);
+    sprintf(Dis_temp, "set:%4d", (int)ctrl.t12_set_temperature);
+    OLED_ShowString(1, 22, (uint8_t *)Dis_temp, 12);
+    sprintf(Dis_temp, "pwm:%4d  Pi:%5d", (int)ctrl.pwm_val, (int)pid.integral);
+    OLED_ShowString(1, 33, (uint8_t *)Dis_temp, 12);
 
-    // for (i = 0; i <= 31; i++)
+    OLED_Fill(0, 45, 128, 64, 0);
+
+    OLED_Fill(0, 46, (127 * ctrl.pwm_val / 100), 50, 1);
+
+    if (ctrl.t12_set_temperature)
+    {
+        if (ctrl.t12_set_temperature < 2)
+            OLED_Fill(0 - 2, 52, (127 * ctrl.t12_set_temperature / 4095), 64, 1);
+        else if (ctrl.t12_set_temperature < 4095 - 2)
+            OLED_Fill((127 * ctrl.t12_set_temperature / 4095) - 2, 52, (127 * ctrl.t12_set_temperature / 4095), 64, 1);
+        else
+            OLED_Fill(127 - 2, 52, (127 * ctrl.t12_set_temperature / 4095), 64, 1);
+    }
+
+    OLED_Fill(0, 54, (127 * ctrl.t12_voltage / 4095), 62, 1);
+
+    // for (i = 0; i <= 127; i++)
     // {
-    //     //x1,y1,x2,y2 填充区域的对角坐标
+    //     // x1,y1,x2,y2 填充区域的对角坐标
     //     //确保x1<=x2;y1<=y2 0<=x1<=127 0<=y1<=63
-    //     //dot:0,清空;1,填充
-    //     // void OLED_Fill(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t dot);
-    //     // if (FFT_out[i] > 6)
-    //     // {
-    //     //     temp = 60;
-    //     // }
-    //     // else
-    //     // {
-    //     //     temp = (uint8_t)(FFT_out[i] * 10);
-    //     // }
-    //     OLED_Fill(i, 0, i, temp, 1);
+    //     // dot:0,清空;1,填充
+    //     //  void OLED_Fill(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t dot);
+    //     //  if (FFT_out[i] > 6)
+    //     //  {
+    //     //      temp = 60;
+    //     //  }
+    //     //  else
+    //     //  {
+    //     //      temp = (uint8_t)(FFT_out[i] * 10);
+    //     //  }
     // }
 }
 
@@ -292,11 +291,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
             {
                 ctrl.encoder_cnt++;
             }
-            if (ctrl.encoder_cnt > 101)
-                ctrl.encoder_cnt = 101;
+            if (ctrl.encoder_cnt > 200)
+                ctrl.encoder_cnt = 200;
             else if (ctrl.encoder_cnt < 0)
                 ctrl.encoder_cnt = 0;
+
+            Sys_Scan();
+            key_scan();
+            key_process();
         }
-        HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
     }
 }

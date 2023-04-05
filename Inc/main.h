@@ -58,26 +58,26 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define ECD_B_Pin GPIO_PIN_0
-#define ECD_B_GPIO_Port GPIOA
-#define ECD_A_Pin GPIO_PIN_1
-#define ECD_A_GPIO_Port GPIOA
-#define KEY_Pin GPIO_PIN_2
-#define KEY_GPIO_Port GPIOA
 #define T12_ADC_Pin GPIO_PIN_3
 #define T12_ADC_GPIO_Port GPIOA
-#define LED_Pin GPIO_PIN_4
-#define LED_GPIO_Port GPIOA
+#define VIN_ADC_Pin GPIO_PIN_4
+#define VIN_ADC_GPIO_Port GPIOA
 #define OLED_RST_Pin GPIO_PIN_0
 #define OLED_RST_GPIO_Port GPIOB
 #define OLED_DC_Pin GPIO_PIN_1
 #define OLED_DC_GPIO_Port GPIOB
 #define OLED_CS_Pin GPIO_PIN_2
 #define OLED_CS_GPIO_Port GPIOB
-#define T12_KEY_Pin GPIO_PIN_10
-#define T12_KEY_GPIO_Port GPIOA
-#define T12_C_Pin GPIO_PIN_11
-#define T12_C_GPIO_Port GPIOA
+#define KEY_Pin GPIO_PIN_12
+#define KEY_GPIO_Port GPIOB
+#define ECD_B_Pin GPIO_PIN_11
+#define ECD_B_GPIO_Port GPIOA
+#define ECD_A_Pin GPIO_PIN_12
+#define ECD_A_GPIO_Port GPIOA
+#define T12_C_Pin GPIO_PIN_4
+#define T12_C_GPIO_Port GPIOB
+#define T12_KEY_Pin GPIO_PIN_9
+#define T12_KEY_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
